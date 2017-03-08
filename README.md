@@ -1,7 +1,7 @@
 # WWOAgent
 Wonderware Online Telemetry Agent
 ==========================
-This agent will upload the CPU, Avalaible Ram and Disk usage through the csv/json upload endpoint of [Wonderware Online](https://online.wonderware.com).
+This agent will upload the CPU, Available Ram and Disk usage through the csv/json upload endpoint of [Wonderware Online](https://online.wonderware.com).
 
 Requirements
 -----------
