@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
+using System.Threading.Tasks;
 using WWOTelemetry;
 using WWOTelemetry.Model;
 using WWOTelemetryAgent.Facades;
@@ -14,12 +16,20 @@ namespace WWOTelemetryAgent
     internal class Program
     {
         private static List<BaseMetric> metrics = new List<BaseMetric>();
+        private static CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
 
         private static void Main(string[] args)
         {
-            var datasourceKey = File.ReadAllText("key.txt");
+            HandlerRoutine hr = new HandlerRoutine(ConsoleCtrlCheck);
+            // we have to keep the handler routine alive during the execution of the program,
+            // because the garbage collector will destroy it after any CTRL event
+            GC.KeepAlive(hr);
+            SetConsoleCtrlHandler(hr, true);
 
             InitializedInfos();
+
+            var datasourceKey = File.ReadAllText("key.txt");
+
             var client = new WWOClient(datasourceKey);
 
             foreach (var tag in metrics.Select(metric => metric.ToTag()))
@@ -28,7 +38,8 @@ namespace WWOTelemetryAgent
             }
 
             var stopWatch = Stopwatch.StartNew();
-            while (true)
+
+            while (!cancellationTokenSource.IsCancellationRequested)
             {
                 foreach (var metric in metrics)
                 {
@@ -39,6 +50,7 @@ namespace WWOTelemetryAgent
                 Thread.Sleep(waitTime);
                 stopWatch.Restart();
             }
+            Console.WriteLine("DONE");
         }
 
         private static void InitializedInfos()
@@ -47,5 +59,37 @@ namespace WWOTelemetryAgent
             metrics.Add(new BaseMetric("Ram.Free", "Bytes", new PerformanceCounterMetric("Memory", "Available Bytes")));
             metrics.Add(new BaseMetric("Disk", "%", new PerformanceCounterMetric("PhysicalDisk", "% Disk Time", "_Total")));
         }
+
+        private static bool ConsoleCtrlCheck(CtrlTypes ctrlType)
+        {
+            cancellationTokenSource.Cancel();
+            return true;
+        }
+
+        #region unmanaged
+
+        /// <summary>
+        /// This function sets the handler for kill events.
+        /// </summary>
+        /// <param name="Handler"></param>
+        /// <param name="Add"></param>
+        /// <returns></returns>
+        [DllImport("Kernel32")]
+        public static extern bool SetConsoleCtrlHandler(HandlerRoutine Handler, bool Add);
+
+        //delegate type to be used of the handler routine
+        public delegate bool HandlerRoutine(CtrlTypes CtrlType);
+
+        // control messages
+        public enum CtrlTypes
+        {
+            CTRL_C_EVENT = 0,
+            CTRL_BREAK_EVENT,
+            CTRL_CLOSE_EVENT,
+            CTRL_LOGOFF_EVENT = 5,
+            CTRL_SHUTDOWN_EVENT
+        }
+
+        #endregion unmanaged
     }
 }
