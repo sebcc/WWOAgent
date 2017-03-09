@@ -21,8 +21,6 @@ namespace WWOTelemetryAgent
         private static void Main(string[] args)
         {
             HandlerRoutine hr = new HandlerRoutine(ConsoleCtrlCheck);
-            // we have to keep the handler routine alive during the execution of the program,
-            // because the garbage collector will destroy it after any CTRL event
             GC.KeepAlive(hr);
             SetConsoleCtrlHandler(hr, true);
 
@@ -68,19 +66,11 @@ namespace WWOTelemetryAgent
 
         #region unmanaged
 
-        /// <summary>
-        /// This function sets the handler for kill events.
-        /// </summary>
-        /// <param name="Handler"></param>
-        /// <param name="Add"></param>
-        /// <returns></returns>
         [DllImport("Kernel32")]
         public static extern bool SetConsoleCtrlHandler(HandlerRoutine Handler, bool Add);
 
-        //delegate type to be used of the handler routine
         public delegate bool HandlerRoutine(CtrlTypes CtrlType);
 
-        // control messages
         public enum CtrlTypes
         {
             CTRL_C_EVENT = 0,
